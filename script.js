@@ -1,24 +1,58 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const form = document.getElementById('form');
-    const messageInput = document.getElementById('messageInput');
-    const messagesContainer = document.getElementById('messages');
+// Подключение к WebSocket-серверу по адресу 'ws://localhost:8080'
+const socket = new WebSocket('ws://localhost:8080');
 
-    // Обработчик события отправки формы
-    form.addEventListener('submit', (event) => {
-        event.preventDefault(); // Предотвращаем перезагрузку страницы
+// Получаем элементы формы и поля ввода
+const form = document.getElementById('form');
+const messageInput = document.getElementById('messageInput');
+const messagesContainer = document.getElementById('messages');
 
-        const messageText = messageInput.value.trim(); // Получаем текст сообщения
+// Обработка событий WebSocket
 
-        if (messageText) {
-            // Создаем элемент для сообщения
-            const messageElement = document.createElement('div');
-            messageElement.className = 'chat__message';
-            messageElement.textContent = messageText; // Устанавливаем текст сообщения
+// Соединение установлено
+socket.onopen = function () {
+    console.log('Соединение с WebSocket сервером установлено.');
+};
 
-            messagesContainer.appendChild(messageElement); // Добавляем сообщение в контейнер
+// Получение сообщения от сервера
+socket.onmessage = function (event) {
+    const data = JSON.parse(event.data); // Парсим полученные данные как JSON
+    displayMessage(data.text); // Отображаем полученное сообщение
+};
 
-            messageInput.value = ''; // Очищаем поле ввода
-            messagesContainer.scrollTop = messagesContainer.scrollHeight; // Прокручиваем вниз
-        }
-    });
+// Соединение закрыто
+socket.onclose = function () {
+    console.log('Соединение с WebSocket сервером закрыто.');
+};
+
+// Обработка ошибки WebSocket
+socket.onerror = function (error) {
+    console.error('Ошибка WebSocket:', error);
+};
+
+// Обработка отправки сообщения
+form.addEventListener('submit', function (e) {
+    e.preventDefault(); // Отключаем перезагрузку страницы при отправке формы
+    const message = messageInput.value.trim(); // Очищаем лишние пробелы
+
+    if (message && socket.readyState === WebSocket.OPEN) {
+        // Отправляем сообщение в формате JSON
+        socket.send(JSON.stringify({ text: message }));
+        displayMessage(message, true);
+        messageInput.value = ''; // Очищаем поле ввода
+    }
 });
+
+function displayMessage(message, isOwnMessage = false) {
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('chat__message');
+
+    if (isOwnMessage) {
+        // Если это сообщение отправлено вами, добавляем тег <strong> для выделения слова "Вы:"
+        messageElement.innerHTML = `<strong>Вы:</strong> ${message}`;
+    } else {
+        messageElement.textContent = message; // Для сообщений от других пользователей
+    }
+
+    messagesContainer.appendChild(messageElement);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight; // Прокрутка вниз
+}
